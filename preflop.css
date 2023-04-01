@@ -1,0 +1,200 @@
+/* ---------------------------------------------------------- */
+/* RESET */
+/* ---------------------------------------------------------- */
+* {
+	font-family: Avenir, 'Avenir Next LT Pro', Montserrat, Corbel, 'URW Gothic', source-sans-pro, sans-serif;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+body {
+	align-items: center;
+	background: url(./img/bg.png);
+	background-size: cover;
+	display: flex;
+	justify-items: center;
+}
+/* ---------------------------------------------------------- */
+/* PLAYER */
+/* ---------------------------------------------------------- */
+/* POSITION */
+.player {
+	background: rgba(13, 87, 41, 0.5);
+	border: 1px solid #191919;
+	border-radius: 4px;
+	height: 76px;
+	position: absolute;
+	width: 233px;
+}
+.player.button::after {
+	background-image: url("data:image/svg+xml,%3Csvg height='46' viewBox='0 0 46 46' width='46' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='23' cy='23' fill='%23efefef' fill-rule='evenodd' r='21' stroke='%23151515' stroke-width='4'/%3E%3C/svg%3E");
+	background-size: 46px 46px;
+	background-repeat: no-repeat;
+	content: "";
+	height: 46px;
+	position: absolute;
+	right: -18px;
+	top: -18px;
+	width: 46px;
+	z-index: 5;
+}
+.player-1 {
+	bottom: 0;
+	left: 383px;
+}
+.player-2 {
+	bottom: 0;
+	left: 133px;
+}
+.player-3 {
+	left: 0;
+	top: 270px;
+}
+.player-4 {
+	left: 0;
+	top: 160px;
+}
+.player-5 {
+	left: 133px;
+	top: 0;
+}
+.player-6 {
+	left: 383px;
+	top: 0;
+}
+.player-7 {
+	left: 633px;
+	top: 0;
+}
+.player-8 {
+	right: 0;
+	top: 160px;
+}
+.player-9 {
+	right: 0;
+	top: 270px;
+}
+.player-10 {
+	bottom: 0;
+	left: 633px;
+}
+/* CUSTOM BUTTON PLACEMENT */
+.player-5.button::after,
+.player-6.button::after {
+	bottom: -18px;
+	top: unset;
+}
+.player-7.button::after {
+	bottom: -18px;
+	left: -18px;
+	right: unset;
+	top: unset;
+}
+.player-8.button::after,
+.player-9.button::after {
+	left: -18px;
+	right: unset;
+}
+.player-10.button::after {
+	left: -18px;
+	right: unset;
+}
+/* OTHER PLAYERS */
+.player-other .action {
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+}
+.player-other .action span {
+	color: #FFF;
+	font-size: 16px;
+	opacity: 0.5;
+}
+.player-other .action strong {
+	color: #FFF;
+	font-size: 16px;
+}
+.player-other .action.fold strong {
+	color: #FF7F70;
+}
+.player-other .cards {
+	display: flex;
+	gap: 3px;
+}
+.player-other .cards img {
+	height: 36px;
+}
+.player-other.player-2,
+.player-other.player-3,
+.player-other.player-4,
+.player-other.player-5,
+.player-other.player-6,
+.player-other.player-7,
+.player-other.player-8,
+.player-other.player-9,
+.player-other.player-10 {
+	align-items: center;
+	display: flex;
+	gap: 16px;
+	padding: 16px;
+}
+/* PRIMARY PLAYER */
+.player-primary {
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	height: 200px;
+	padding: 16px;
+}
+.player-primary .action {
+	display: flex;
+	gap: 16px;
+}
+.player-primary button {
+	font-weight: 500;
+	padding: 5px 11px;
+}
+.player-primary .cards {
+	display: flex;
+	gap: 8px;
+}
+.player-primary .cards img {
+	height: 84px;
+}
+.player-primary .stack {
+	color: #FFF;
+	font-size: 20px;
+	margin-bottom: -2px;
+}
+/* ---------------------------------------------------------- */
+/* STAGE */
+/* ---------------------------------------------------------- */
+.stage {
+	display: flex;
+	flex: 1;
+	gap: 44px;
+	padding: 44px;
+}
+.stage .table-area {
+/*	background: rgba(0, 0, 0, 0.2);*/
+	background-image: url(img/table.png);
+	background-position: center center;
+	background-repeat: no-repeat;
+	background-size: 775px 378px;
+	height: 545px;
+	position: relative;
+	width: 1000px;
+}
+.stage .stats {
+	background: rgba(255, 255, 255, 0.05);
+	flex: 1;
+	min-width: 250px;
+}
+/* ---------------------------------------------------------- */
+/* TABLE */
+/* ---------------------------------------------------------- */
+.table {
+	margin: 88px;
+	max-width: 800px;
+}
