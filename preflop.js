@@ -8,87 +8,57 @@ window.PB.Core = function () {
 	// -------------------------------------------------------------
 	// PRIVATE VARS
 	// -------------------------------------------------------------
+	const debug = true;
 	let gameState = setupInitializeGameState();
 	// -------------------------------------------------------------
 	// PRIVATE ANALYSIS (CARD AND HAND) FUNCTIONS
 	// -------------------------------------------------------------
-	function analysisCreateDeck() {
-		const suits = ['c', 'd', 'h', 's'];
-		const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
-		const deck = [];
-		for (const suit of suits) {
-			for (const rank of ranks) {
-				deck.push(rank + suit);
-			}
-		}
-		return deck;
-	}
-	function analysisCreatePlayers(numPlayers) {
-		if (numPlayers < 2 || numPlayers > 10) {
-			alert('Invalid number of players');
-			return false;
-		}
-		const players = [];
-		for (let i = 0; i < numPlayers; i++) {
-			players.push({
-				id: i,
-				type: setupGetPlayerType(),
-				stackSize: Math.floor(Math.random() * (250 - 50 + 1) + 50),
-				hand: []
-			});
-		}
-		return players;
-	}
 	function analysisEvaluateHand(hand) {
 		// Evaluate the hand
 		const handValue = PokerEvaluator.evalHand(hand);
 		return handValue;
 	}
-	function analysisGenerateCard(deck) {
-		return deck.splice(Math.floor(Math.random() * deck.length), 1)[0];
-	}
 	function analysisGetHandStrength(hand) {
 		const handValue = analysisEvaluateHand(hand);
-		const handStrength = handValue.strength; // Or another relevant property depending on the library
-		return handStrength;
+		return handValue.handRank;
 	}
 	function analysisHandStrengthVisualization(hand) {
 		// Code for visualizing hand strength using a library or custom implementation
 	}
 	// -------------------------------------------------------------
-	// PRIVATE ODDS AND EXPECTED VALUE FUNCTIONS
-	// -------------------------------------------------------------
-	function oddsCalculateExpectedValue(handStrength, potOdds, betAmount) {
-		let winAmount = handStrength * (potOdds * betAmount);
-		let loseAmount = (1 - handStrength) * betAmount;
-		return winAmount - loseAmount;
-	}
-	function oddsCalculatePotOdds(potSize, betAmount) {
-		return betAmount / (potSize + betAmount);
-	}
-	// -------------------------------------------------------------
 	// PRIVATE PRE-FLOP DECISION MAKING FUNCTIONS
 	// -------------------------------------------------------------
-	function preFlopDecision(gameState, myPosition) {
+	function preFlopDecision(myPosition) {
+		// Get the optimal pre-flop hand ranges for each position type
 		let optimalRanges = preFlopGetOptimalHandRanges();
+		// Get the player's hand range based on their hole cards
 		let playerHandRange = preFlopGetPlayerHandRange(gameState.players[myPosition]);
+		// Get an array of actions taken by players before the current player
 		let actionsBeforeMe = preFlopPlayerActionsBeforeMe(gameState, myPosition);
+		// Calculate the effective stack size of the current player
 		let effectiveStackSize = preFlopEffectiveStackSize(gameState, myPosition);
+		// Calculate the pot odds for the current player's decision
 		let potOdds = preFlopPotOdds(gameState, myPosition);
+		// Calculate the expected value of the current player's decision
 		let expectedValue = preFlopExpectedValue(gameState, myPosition);
-
-		let positionType = setupGetMyPositionType(myPosition, gameState.players.length);
-		let optimalRange = optimalRanges[positionType];
-
+		// Determine the position type of the current player (early, middle, or late position)
+		let myPositionType = setupGetMyPositionType(myPosition, gameState.players.length);
+		// Get the optimal hand range for the current player's position type
+		let optimalRange = optimalRanges[myPositionType];
+		// If the expected value is positive and the player's hand is in the 'raise' or 'reraise' range...
 		if (expectedValue > 0 && (playerHandRange.raise.includes(gameState.players[myPosition].cards) || playerHandRange.reraise.includes(gameState.players[myPosition].cards))) {
+			// If there's a raise before the current player and their hand is in the 'reraise' range, return 'reraise'
 			if (actionsBeforeMe.some(action => action === 'raise') && playerHandRange.reraise.includes(gameState.players[myPosition].cards)) {
 				return 'reraise';
 			} else {
+				// Otherwise, return 'raise'
 				return 'raise';
 			}
 		} else if (expectedValue > 0 && playerHandRange.call.includes(gameState.players[myPosition].cards)) {
+			// If the expected value is positive and the player's hand is in the 'call' range, return 'call'
 			return 'call';
 		} else {
+			// If none of the above conditions are met, return 'fold'
 			return 'fold';
 		}
 	}
@@ -242,14 +212,81 @@ window.PB.Core = function () {
 	// -------------------------------------------------------------
 	// PRIVATE SETUP FUNCTIONS
 	// -------------------------------------------------------------
-	function setupDealCards(gameState) {
-		for (const player of gameState.players) {
-			player.hand = [analysisGenerateCard(gameState.deck), analysisGenerateCard(gameState.deck)];
+	function setupCreateDeck() {
+		// Create a deck of 52 cards
+		const suits = ['c', 'd', 'h', 's'];
+		const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+		const deck = [];
+		for (const suit of suits) {
+			for (const rank of ranks) {
+				deck.push(rank + suit);
+			}
 		}
+		return deck;
 	}
-	function setupGetPosition(gameState) {
-		return gameState.dealerPosition;
-		// return (gameState.players.length + 1) % gameState.players.length;
+	function setupCreatePlayers(numPlayers) {
+		// Validate that we have 2-10 players
+		if (numPlayers < 2 || numPlayers > 10) {
+			alert('Invalid number of players');
+			return false;
+		}
+		if (debug) { console.log("Number of Players: ", numPlayers); }
+		// Create an array of players
+		const primaryPlayer = document.querySelector('.player-primary');
+		const players = [];
+		let html = '';
+		for (let i = 0; i < numPlayers; i++) {
+			const playerId = i;
+			const playerType = (i === 0) ? 'optimal' : setupGetPlayerType();
+			const stackSize = Math.floor(Math.random() * (250 - 50 + 1) + 50);
+			players.push({
+				id: playerId,
+				type: playerType,
+				stackSize: stackSize,
+				hand: []
+			});
+			// Not applicable to primary player
+			if (i === 0) {
+				// Add players to DOM
+				primaryPlayer.innerHTML = _tmpl('playerZero', {
+					stackSize: stackSize
+				});
+			} else {
+				// Add players to DOM
+				html += _tmpl('player', {
+					playerId: playerId,
+					stackSize: stackSize
+				});
+			}
+		}
+		// Insert html after .player-primary
+		primaryPlayer.insertAdjacentHTML('afterend', html);
+		// Return the array of players
+		return players;
+	}
+	function setupDealCards() {
+		// Make a copy of the shuffled deck
+		let deck = gameState.deck;
+		// Burn the first card
+		deck.shift();
+		// Deal the first card to each player, then second card to each player
+		for (let i = 0; i < 2; i++) {
+			for (let i = 0; i < gameState.players.length; i++) {
+				gameState.players[i].hand.push(deck.shift());
+			}
+		}
+		// Populate primary players cards src property
+		document.getElementById('card1').src = 'img/' + gameState.players[0].hand[0] + '.png';
+		document.getElementById('card2').src = 'img/' + gameState.players[0].hand[1] + '.png';
+	}
+	function setupGetButtonPosition() {
+		// If the button position is not set, set it to a random position
+		if (gameState.buttonPosition === undefined) {
+			// Randomly assign the button position
+			return gameState.buttonPosition = Math.floor(Math.random() * gameState.players.length);
+		}
+		// Otherwise, increment the button position
+		return gameState.buttonPosition = (gameState.buttonPosition + 1) % gameState.players.length;
 	}
 	function setupGetMyPositionType(position, totalPlayers) {
 		if (position <= totalPlayers * 0.4) {
@@ -267,20 +304,34 @@ window.PB.Core = function () {
 		return playerTypes[Math.floor(Math.random() * playerTypes.length)];
 	}
 	function setupInit() {
-		gameState.players = analysisCreatePlayers(prompt("Enter the number of players (2-10): "));
+		// Generate players
+		gameState.players = setupCreatePlayers(prompt("Enter the number of players (2-10): "));
+		if (debug) { console.log("Players Created: ", gameState.players); }
 		// If player count is off, don't continue
 		if (!gameState.players) {
 			return;
 		}
-		gameState.deck = analysisCreateDeck();
-		setupShuffleDeck(gameState.deck);
-		setupDealCards(gameState);
-		gameState.position = setupGetPosition(gameState);
+		// Generate deck
+		gameState.deck = setupCreateDeck();
+		if (debug) { console.log("Deck Created: ", gameState.deck); }
+		// Shuffle deck
+		setupShuffleDeck();
+		if (debug) { console.log("Deck Shuffled: ", gameState.deck); }
+		// Deal cards
+		setupDealCards();
+		if (debug) { console.log("Cards Dealt: ", gameState.players); }
+		// Get starting button position
+		gameState.buttonPosition = setupGetButtonPosition();
+		if (debug) { console.log("Button Position: ", gameState.buttonPosition); }
+		// Add button to the right player
+		document.querySelector('.player-' + gameState.buttonPosition).classList.add('button');
+		// Events
+		setupRegisterEvents();
 	}
 	function setupInitializeGameState() {
 		return {
-			players: [],
 			deck: [],
+			players: [],
 			positionCounts: {
 				early: 0,
 				cutoff: 0,
@@ -289,13 +340,45 @@ window.PB.Core = function () {
 			}
 		};
 	}
-	function setupResetGameState() {
-		return gameState = setupInitializeGameState();
+	function setupRegisterEvents() {
+		// Call button
+		document.getElementById('call').addEventListener('click', function () {
+			// Call action
+		}, { once: true });
+		// Fold button
+		document.getElementById('fold').addEventListener('click', function () {
+			// Fold action
+		}, { once: true });
+		// Raise button
+		document.getElementById('raise').addEventListener('click', function () {
+			// Raise action
+		}, { once: true });
+		// Reset button
+		document.getElementById('reset').addEventListener('click', function () {
+			setupResetGame();
+		}, { once: true });
+		// Show hands button
+		document.getElementById('show').addEventListener('click', function () {
+			// Show hands
+		}, { once: true });
 	}
-	function setupShuffleDeck(deck) {
-		for (let i = deck.length - 1; i > 0; i--) {
+	function setupResetGame() {
+		if (debug) { console.log('-----'); console.log('RESET'); console.log('-----'); }
+		// Remove button position
+		gameState.buttonPosition = undefined;
+		document.querySelector('.player.button').classList.remove('button');
+		// Show all players
+		document.querySelectorAll('.player-other').forEach(function (player) {
+			player.remove();
+		});
+		// Reset deck
+		gameState = setupInitializeGameState();
+		setupInit();
+	}
+	function setupShuffleDeck() {
+		for (let i = gameState.deck.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
-			[deck[i], deck[j]] = [deck[j], deck[i]];
+			[gameState.deck[i], gameState.deck[j]] = [gameState.deck[j], gameState.deck[i]];
 		}
 	}
 	// -------------------------------------------------------------
@@ -335,6 +418,11 @@ window.PB.Core = function () {
 		}
 		return output;
 	}
+	// -------------------------------------------------------------
+	// PRIVATE UTILITY FUNCTIONS
+	// -------------------------------------------------------------
+	// John Resig - http://ejohn.org/blog/javascript-micro-templating/ - MIT Licensed
+	function _tmpl(str, data) { let tmplCache = []; let fn = !/\W/.test(str) ? tmplCache[str] = tmplCache[str] || _tmpl(document.getElementById(str).innerHTML) : new Function("obj", "let p=[],print=function(){p.push.apply(p,arguments);};" + "with(obj){p.push('" + str.replace(/[\r\t\n]/g, " ").split("<%").join("\t").replace(/((^|%>)[^\t]*)'/g, "$1\r").replace(/\t=(.*?)%>/g, "',$1,'").split("\t").join("');").split("%>").join("p.push('").split("\r").join("\\'") + "');}return p.join('');"); return data ? fn( data ) : fn; }
 	// -------------------------------------------------------------
 	// PUBLIC FACING METHODS
 	// -------------------------------------------------------------

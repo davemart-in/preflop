@@ -7,42 +7,51 @@
 </head>
 <body>
 	<div class="stage">
+		<!-- ------------------------------------ -->
+		<!-- TABLE -->
+		<!-- ------------------------------------ -->
 		<div class="table-area">
-			<div class="player player-primary player-1 button">
-				<div class="cards">
-					<img src="img/Ad.png" />
-					<img src="img/Kd.png" />
-				</div>
-				<div class="stack">$200</div>
-				<div class="action">
-					<button class="fold">Fold</button>
-					<button class="call">Call</button>
-					<button class="raise">Raise</button>
-				</div>
-			</div>
-			<div class="player player-other player-2">
-				<div class="cards">
-					<img src="img/card-back.png" />
-					<img src="img/card-back.png" />
-				</div>
-				<div class="action fold">
-					<span>$200</span>
-					<strong>Fold</strong>
-				</div>
-			</div>
-			<div class="player player-other player-3"></div>
-			<div class="player player-other player-4"></div>
-			<div class="player player-other player-5"></div>
-			<div class="player player-other player-6"></div>
-			<div class="player player-other player-7"></div>
-			<div class="player player-other player-8"></div>
-			<div class="player player-other player-9"></div>
-			<div class="player player-other player-10"></div>
+			<!-- PLAYERS -->
+			<div class="player player-primary player-0"></div>
 		</div>
+		<!-- STATS -->
 		<div class="stats">
+			<button id="reset">Reset Game</button>
+			<button id="show">Show Hands</button>
 		</div>
 	</div>
+	<!-- ------------------------------------ -->
+	<!-- JAVASCRIPT -->
+	<!-- ------------------------------------ -->
 	<script type="text/javascript" src="poker-evaluator.js"></script>
 	<script type="text/javascript" src="preflop.js"></script>
+	<!-- ------------------------------------ -->
+	<!-- COMPONENTS -->
+	<!-- ------------------------------------ -->
+	<!-- PLAYER -->
+	<script type="text/html" id="player">
+		<div class="player player-other player-<%=playerId%>">
+			<div class="cards">
+				<img src="img/card-back.png" />
+				<img src="img/card-back.png" />
+			</div>
+			<div class="action">
+				<span>$<%=stackSize%></span>
+				<strong></strong>
+			</div>
+		</div>
+	</script>
+	<script type="text/html" id="playerZero">
+		<div class="cards">
+			<img src="" id="card1" />
+			<img src="" id="card2" />
+		</div>
+		<div class="stack">$<%=stackSize%></div>
+		<div class="action">
+			<button id="fold">Fold</button>
+			<button id="call">Call</button>
+			<button id="raise">Raise</button>
+		</div>
+	</script>
 </body>
 </html>
