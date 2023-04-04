@@ -18,12 +18,14 @@
 		<div class="stats">
 			<button id="reset">Reset Game</button>
 			<button id="show">Show Hands</button>
+			<div class="stat">
+				<strong>Effective stack size:</strong> $<span class="stat-ess"></span>
+			</div>
 		</div>
 	</div>
 	<!-- ------------------------------------ -->
 	<!-- JAVASCRIPT -->
 	<!-- ------------------------------------ -->
-	<script type="text/javascript" src="poker-evaluator.js"></script>
 	<script type="text/javascript" src="preflop.js"></script>
 	<!-- ------------------------------------ -->
 	<!-- COMPONENTS -->
@@ -32,8 +34,8 @@
 	<script type="text/html" id="player">
 		<div class="player player-other player-<%=playerId%>">
 			<div class="cards">
-				<img src="img/card-back.png" />
-				<img src="img/card-back.png" />
+				<img src="img/card-back.png" class="card1" />
+				<img src="img/card-back.png" class="card2" />
 			</div>
 			<div class="action">
 				<span>$<%=stackSize%></span>

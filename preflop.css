@@ -108,7 +108,7 @@ button {
 }
 /* OTHER PLAYERS */
 .player-other .action {
-	align-items: center;
+	align-items: flex-start;
 	display: flex;
 	flex-direction: column;
 }
@@ -120,6 +120,7 @@ button {
 .player-other .action strong {
 	color: #FFF;
 	font-size: 16px;
+	text-transform: capitalize;
 }
 .player-other .action.fold strong {
 	color: #FF7F70;
@@ -129,7 +130,7 @@ button {
 	gap: 3px;
 }
 .player-other .cards img {
-	height: 36px;
+	height: 46px;
 }
 .player-other.player-1,
 .player-other.player-2,
@@ -203,6 +204,13 @@ button {
 .stats button {
 	display: block;
 	margin-bottom: 8px;
+}
+.stats .stat {
+	color: #FFF;
+	margin-top: 16px;
+}
+.stats .stat strong {
+	font-weight: 500;
 }
 /* ---------------------------------------------------------- */
 /* POKER TABLE */

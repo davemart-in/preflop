@@ -13,56 +13,8 @@ window.PB.Core = function () {
 	// -------------------------------------------------------------
 	// PRIVATE ANALYSIS (CARD AND HAND) FUNCTIONS
 	// -------------------------------------------------------------
-	function analysisEvaluateHand(hand) {
-		// Evaluate the hand
-		const handValue = PokerEvaluator.evalHand(hand);
-		return handValue;
-	}
-	function analysisGetHandStrength(hand) {
-		const handValue = analysisEvaluateHand(hand);
-		return handValue.handRank;
-	}
-	function analysisHandStrengthVisualization(hand) {
-		// Code for visualizing hand strength using a library or custom implementation
-	}
-	// -------------------------------------------------------------
-	// PRIVATE PRE-FLOP DECISION MAKING FUNCTIONS
-	// -------------------------------------------------------------
-	function preFlopDecision(myPosition) {
-		// Get the optimal pre-flop hand ranges for each position type
-		let optimalRanges = preFlopGetOptimalHandRanges();
-		// Get the player's hand range based on their hole cards
-		let playerHandRange = preFlopGetPlayerHandRange(gameState.players[myPosition]);
-		// Get an array of actions taken by players before the current player
-		let actionsBeforeMe = preFlopPlayerActionsBeforeMe(gameState, myPosition);
-		// Calculate the effective stack size of the current player
-		let effectiveStackSize = preFlopEffectiveStackSize(gameState, myPosition);
-		// Calculate the pot odds for the current player's decision
-		let potOdds = preFlopPotOdds(gameState, myPosition);
-		// Calculate the expected value of the current player's decision
-		let expectedValue = preFlopExpectedValue(gameState, myPosition);
-		// Determine the position type of the current player (early, middle, or late position)
-		let myPositionType = setupGetMyPositionType(myPosition, gameState.players.length);
-		// Get the optimal hand range for the current player's position type
-		let optimalRange = optimalRanges[myPositionType];
-		// If the expected value is positive and the player's hand is in the 'raise' or 'reraise' range...
-		if (expectedValue > 0 && (playerHandRange.raise.includes(gameState.players[myPosition].cards) || playerHandRange.reraise.includes(gameState.players[myPosition].cards))) {
-			// If there's a raise before the current player and their hand is in the 'reraise' range, return 'reraise'
-			if (actionsBeforeMe.some(action => action === 'raise') && playerHandRange.reraise.includes(gameState.players[myPosition].cards)) {
-				return 'reraise';
-			} else {
-				// Otherwise, return 'raise'
-				return 'raise';
-			}
-		} else if (expectedValue > 0 && playerHandRange.call.includes(gameState.players[myPosition].cards)) {
-			// If the expected value is positive and the player's hand is in the 'call' range, return 'call'
-			return 'call';
-		} else {
-			// If none of the above conditions are met, return 'fold'
-			return 'fold';
-		}
-	}
-	function preFlopEffectiveStackSize(gameState, myPosition) {
+	function analysisEffectiveStackSize() {
+		const myPosition = 0;
 		let myStackSize = gameState.players[myPosition].stackSize;
 		let effectiveStackSize = myStackSize;
 
@@ -77,37 +29,153 @@ window.PB.Core = function () {
 		}
 		return effectiveStackSize;
 	}
-	function preFlopExpectedValue(gameState, myPosition) {
-		let potOdds = preFlopPotOdds(gameState, myPosition);
-		let handStrength = analysisGetHandStrength(gameState.players[myPosition].cards);
-
-		if (potOdds === "No action required") {
-			return "No action required";
+	function analysisGetHandStrength(cards) {
+		const [high, low] = cards.sort((a, b) => analysisGetHandStrengthCardValue(b) - analysisGetHandStrengthCardValue(a));
+		const highValue = analysisGetHandStrengthCardValue(high);
+		const lowValue = analysisGetHandStrengthCardValue(low);
+		let score = highValue;
+		// Pair
+		if (highValue === lowValue) {
+			score *= 2;
 		}
-
-		let expectedValue = handStrength * (gameState.potSize + gameState.players[myPosition].amountToCall) - gameState.players[myPosition].amountToCall;
-		return expectedValue;
+		// Suited
+		else if (analysisGetHandStrengthCardSuit(high) === analysisGetHandStrengthCardSuit(low)) {
+			score += 2;
+		}
+		// Gap penalty
+		const gap = highValue - lowValue - 1;
+		if (gap < 1) {
+			score -= 0;
+		} else if (gap < 3) {
+			score -= 1;
+		} else if (gap < 5) {
+			score -= 2;
+		} else {
+			score -= 4;
+		}
+		// Straight penalty applied to hands that are one card away from completing a straight
+		if (highValue < 12 && lowValue > 2 && gap === 4) {
+			score -= 1;
+		}
+		return score;
+	}
+	function analysisGetHandStrengthCardValue(card) {
+		const value = card.slice(0, -1);
+		const values = {
+			T: 10,
+			J: 11,
+			Q: 12,
+			K: 13,
+			A: 14,
+		};
+		return values[value] || parseInt(value);
+	}
+	function analysisGetHandStrengthCardSuit(card) {
+		return card.slice(-1);
+	}
+	function analysisShowPositionStats(gameState) {
+		let output = 'Position stats:\n';
+		for (const position in gameState.positionCounts) {
+			let totalHands = gameState.totalHands;
+			let positionCount = gameState.positionCounts[position];
+			let percentage = positionCount / totalHands * 100;
+			output += `${position}: ${positionCount} hands (${percentage.toFixed(2)}%)\n`;
+		}
+		return output;
+	}
+	// -------------------------------------------------------------
+	// PRIVATE PRE-FLOP DECISION MAKING FUNCTIONS
+	// -------------------------------------------------------------
+	function preFlopAllHandRanges() {
+		return [
+			'AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22',
+			'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s',
+			'KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'K6s', 'K5s', 'K4s', 'K3s', 'K2s',
+			'QJs', 'QTs', 'Q9s', 'Q8s', 'Q7s', 'Q6s', 'Q5s', 'Q4s', 'Q3s', 'Q2s',
+			'JTs', 'J9s', 'J8s', 'J7s', 'J6s', 'J5s', 'J4s', 'J3s', 'J2s',
+			'T9s', 'T8s', 'T7s', 'T6s', 'T5s', 'T4s', 'T3s', 'T2s',
+			'98s', '97s', '96s', '95s', '94s', '93s', '92s',
+			'87s', '86s', '85s', '84s', '83s', '82s',
+			'76s', '75s', '74s', '73s', '72s',
+			'65s', '64s', '63s', '62s',
+			'54s', '53s', '52s',
+			'43s', '42s',
+			'32s',
+			'AKo', 'AQo', 'AJo', 'ATo', 'A9o', 'A8o', 'A7o', 'A6o', 'A5o', 'A4o', 'A3o', 'A2o',
+			'KQo', 'KJo', 'KTo', 'K9o', 'K8o', 'K7o', 'K6o', 'K5o', 'K4o', 'K3o', 'K2o',
+			'QJo', 'QTo', 'Q9o', 'Q8o', 'Q7o', 'Q6o', 'Q5o', 'Q4o', 'Q3o', 'Q2o',
+			'JTo', 'J9o', 'J8o', 'J7o', 'J6o', 'J5o', 'J4o', 'J3o', 'J2o',
+			'T9o', 'T8o', 'T7o', 'T6o', 'T5o', 'T4o', 'T3o', 'T2o',
+			'98o', '97o', '96o', '95o', '94o', '93o', '92o',
+			'87o', '86o', '85o', '84o', '83o', '82o',
+			'76o', '75o', '74o', '73o', '72o',
+			'65o', '64o', '63o', '62o',
+			'54o', '53o', '52o',
+			'43o', '42o',
+			'32o'
+		];
+	}
+	function preFlopArrayPlayersActingBeforeMe() {
+		const players = gameState.players;
+		const buttonPosition = gameState.buttonPosition;
+		const actingBeforeMe = [];
+		// Determine the small blind and big blind positions.
+		const smallBlindPosition = (buttonPosition + 1) % players.length;
+		const bigBlindPosition = (buttonPosition + 2) % players.length;
+		// Calculate the position of the first player to act after the big blind.
+		const firstToActPosition = (bigBlindPosition + 1) % players.length;
+		// Add players who act before player[0] to the actingBeforeMe array.
+		for (let i = firstToActPosition; i !== 0; i = (i + 1) % players.length) {
+			actingBeforeMe.push(players[i]);
+		}
+		return actingBeforeMe;
+	}
+	function preFlopDecision(playerId) {
+		let action = "fold";
+		if (debug) { console.log("preflopDecision ---------------------------------------"); }
+		// Determine the position type of the current player
+		gameState.players[playerId].positionZone = setupGetPositionZone(playerId, gameState.buttonPosition, gameState.players.length);
+		if (debug) { console.log("Position Zone: ", gameState.players[playerId].positionZone); }
+		// Get the player's hand range based on their hole cards
+		let playerHandRange = preFlopGetPlayerHandRange(gameState.players[playerId]);
+		if (debug) { console.log("Player Hand Range: ", playerHandRange); }
+		// Calculate the expected value of the current player's decision
+		let handStrength = analysisGetHandStrength(gameState.players[playerId].hand);
+		if (debug) { console.log("Hand Strength: ", handStrength); }
+		// Convert hand to range format
+		const handRangeFormat = handToAnnotation(gameState.players[playerId].hand);
+		if (debug) { console.log("Range Format: ", handRangeFormat); }
+		// If the expected value is positive and the player's hand is in the 'raise' or 'reraise' range...
+		if (playerHandRange['raise'] && playerHandRange['raise'].includes(handRangeFormat) || playerHandRange['reraise'] && playerHandRange['reraise'].includes(handRangeFormat)) {
+			action = 'raise';
+		} else if (playerHandRange['call'] && playerHandRange['call'].includes(handRangeFormat)) {
+			action = 'call';
+		}
+		document.querySelector('.player-' + playerId + ' .action strong').textContent = action;
+		if (action === 'fold') {
+			document.querySelector('.player-' + playerId + ' .action').classList.add('fold');
+		}
 	}
 	function preFlopGetLooseHandRanges() {
 		const handRanges = {
-			earlyPosition: {
-				raise: "22+ A2s+ K9s+ Q9s+ J9s+ T8s+ 97s+ 86s+ 75s+ 64s+ 53s+ A7o+ K9o+ Q9o+ J9o+ T9o",
-				reraise: "AA-QQ A5s",
-				call: "QQ-22 ATs+ KTs+ QTs+ JTs-76s AKo"
+			"early": {
+				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22', 'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'AKo', 'AQo', 'AJo', 'ATo', 'A9o', 'A8o', 'A7o'],
+				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AJs', 'ATs', 'A5s', 'AKo', 'AQo'],
+				call: ['QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22', 'A9s', 'A8s', 'A7s', 'A6s', 'KQs', 'KJs', 'KTs', 'QJs', 'QTs', 'JTs', 'T9s', '98s', '87s', '76s', '65s', '54s', '43s', 'A9o', 'A8o', 'A7o', 'A6o', 'KQo', 'KJo', 'KTo', 'QJo', 'QTo', 'JTo']
 			},
-			cutoff: {
-				raise: "22+ A2s+ K7s+ Q7s+ J7s+ T7s+ 96s+ 85s+ 74s+ 63s+ 53s+ A2o+ K8o+ Q8o+ J8o+ T8o",
-				reraise: "JJ+ AKs-ATs A5s-A2s KQs-KJs QJs JTs 97s 87s 54s AKo-AQo",
-				call: "TT-22 AQs-A8s A6s K9s+ Q9s+ JTs 98s 76s-65s J9s-86s AQo-AJo KQo"
+			"cutoff": {
+				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22', 'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'K6s', 'K5s', 'K4s', 'K3s', 'K2s', 'AKo', 'AQo', 'AJo', 'ATo', 'A9o', 'A8o', 'A7o', 'A6o', 'A5o', 'A4o', 'A3o', 'A2o', 'KQo', 'KJo', 'KTo', 'K9o', 'K8o', 'K7o', 'K6o'],
+				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', 'AKs', 'AQs', 'AJs', 'ATs', 'A5s', 'A4s', 'A3s', 'A2s', 'KQs', 'KJs', 'AKo', 'AQo'],
+				call: ['88', '77', '66', '55', '44', '33', '22', 'A9s', 'A8s', 'A7s', 'A6s', 'KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'K6s', 'K5s', 'K4s', 'QJs', 'QTs', 'Q9s', 'Q8s', 'Q7s', 'JTs', 'J9s', 'J8s', 'J7s', 'T9s', 'T8s', 'T7s', '98s', '97s', '96s', '87s', '86s', '76s', '75s', '65s', 'AJo', 'ATo', 'A9o', 'A8o', 'A7o', 'A6o', 'KQo', 'KJo', 'KTo', 'K9o', 'K8o', 'K7o', 'QJo', 'QTo', 'Q9o', 'Q8o', 'JTo', 'J9o', 'J8o', 'T9o', 'T8o', '98o', '97o', '87o']
 			},
-			button: {
-				raise: "22+ A2s+ K2s+ Q4s+ J6s+ T6s+ 95s+ 84s+ 73s+ 62s+ 52s+ A2o+ K5o+ Q7o+ J8o+ T8o",
-				reraise: "99+ AKs-ATs A5s-A2s KQs-KJs QJs JTs 97s 75s AKo-AQo",
-				call: "88-22 A9s-A6s KTs-K9s QTs-Q9s J9s-T9s 86s-75s 64s-53s J8s-T7s AJo-ATo KQo-KJo"
+			"button": {
+				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22', 'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'K6s', 'K5s', 'K4s', 'K3s', 'K2s', 'QJs', 'QTs', 'Q9s', 'Q8s', 'Q7s', 'Q6s', 'Q5s', 'Q4s', 'JTs', 'J9s', 'J8s', 'J7s', 'J6s', 'J5s', 'T9s', 'T8s', 'T7s', 'T6s', '98s', '97s', '96s', '95s', '87s', '86s', '85s', '76s', '75s', '74s', '65s', '64s', '63s', '54s', '53s', 'AKo', 'AQo', 'AJo', 'ATo', 'A9o', 'A8o', 'A7o', 'A6o', 'A5o', 'A4o', 'A3o', 'A2o', 'KQo', 'KJo', 'KTo', 'K9o', 'K8o', 'K7o', 'K6o', 'K5o', 'QJo', 'QTo', 'Q9o', 'Q8o', 'Q7o', 'JTo', 'J9o', 'J8o', 'J7o', 'T9o', 'T8o', 'T7o'],
+				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', 'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'KQs', 'KJs', 'KTs', 'K9s', 'QJs', 'QTs', 'JTs', 'T9s', '98s', '87s', '76s', 'AKo', 'AQo', 'AJo', 'ATo'],
+				call: ['88', '77', '66', '55', '44', '33', '22', 'A9s', 'A8s', 'A7s', 'A6s', 'KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'K6s', 'K5s', 'K4s', 'QJs', 'QTs', 'Q9s', 'Q8s', 'Q7s', 'JTs', 'J9s', 'J8s', 'J7s', 'T9s', 'T8s', 'T7s', '98s', '97s', '96s', '87s', '86s', '76s', '75s', '65s', 'AJo', 'ATo', 'A9o', 'A8o', 'A7o', 'A6o', 'KQo', 'KJo', 'KTo', 'K9o', 'K8o', 'K7o', 'QJo', 'QTo', 'Q9o', 'Q8o', 'JTo', 'J9o', 'J8o', 'T9o', 'T8o', '98o', '97o', '87o']
 			},
-			blinds: {
-				reraise: "AA-KK A5s",
-				call: "QQ-22 ATs+ KTs+ QTs+ JTs-76s AKo"
+			"blinds": {
+				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AJs', 'ATs', 'A5s', 'AKo', 'AQo'],
+				call: ['QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22', 'A9s', 'A8s', 'A7s', 'A6s', 'KQs', 'KJs', 'KTs', 'K9s', 'QJs', 'QTs', 'JTs', 'T9s', '98s', '87s', '76s', '65s', '54s', '43s', 'A9o', 'A8o', 'A7o', 'A6o', 'KQo', 'KJo', 'KTo', 'QJo', 'QTo', 'JTo']
 			}
 		};
 		return handRanges;
@@ -115,24 +183,24 @@ window.PB.Core = function () {
 	function preFlopGetOptimalHandRanges() {
 		// Adheres to Ed Millers recommendations for optimal hand ranges
 		const handRanges = {
-			earlyPosition: {
+			"early": {
 				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AJs', 'ATs', 'KQs'],
 				reraise: ['AA', 'KK', 'QQ', 'JJ', 'AKs', 'AKo'],
 				call: []
 			},
-			cutoff: {
+			"cutoff": {
 				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22', 'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'QJs', 'QTs', 'Q9s', 'JTs', 'T9s', '98s', '87s', '76s', '65s'],
 				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AJs', 'ATs', 'KQs', 'AKo', 'AQo', 'AJo', 'ATo', 'KQo'],
 				call: []
 			},
-			button: {
+			"button": {
 				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22', 'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'QJs', 'QTs', 'Q9s', 'JTs', 'T9s', '98s', '87s', '76s', '65s'],
 				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AJs', 'ATs', 'KQs', 'AKo', 'AQo', 'AJo', 'ATo', 'KQo'],
 				call: ['66', '55', '44', '33', '22', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'K9s', 'K8s', 'K7s', 'Q9s', 'J9s', 'T8s', '97s', '86s', '75s', '64s', '53s', '43s']
 			},
-			blinds: {
+			"blinds": {
 				raise: [],
-				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', '        AJs', 'ATs', 'KQs', 'AKo', 'AQo', 'AJo', 'ATo', 'KQo'],
+				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AJs', 'ATs', 'KQs', 'AKo', 'AQo', 'AJo', 'ATo', 'KQo'],
 				call: ['88', '77', '66', '55', '44', '33', '22', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'K9s', 'K8s', 'K7s', 'Q9s', 'J9s', 'T9s', '98s', '87s', '76s', '65s', '54s']
 			}
 		};
@@ -140,15 +208,16 @@ window.PB.Core = function () {
 	}
 	function preFlopGetPlayerHandRange(player) {
 		let handRange;
+		let positionZone = player.positionZone;
 		switch (player.type) {
 			case 'optimal':
-				handRange = preFlopGetOptimalHandRanges()[player.position];
+				handRange = preFlopGetOptimalHandRanges()[positionZone];
 				break;
 			case 'loose':
-				handRange = preFlopGetLooseHandRanges()[player.position];
+				handRange = preFlopGetLooseHandRanges()[positionZone];
 				break;
 			case 'tight':
-				handRange = preFlopGetTightHandRanges()[player.position];
+				handRange = preFlopGetTightHandRanges()[positionZone];
 				break;
 			default:
 				console.error('Invalid player type:', player.type);
@@ -158,56 +227,71 @@ window.PB.Core = function () {
 	}
 	function preFlopGetTightHandRanges() {
 		const handRanges = {
-			earlyPosition: {
-				raise: "22+ AJs+ KQs AKo",
-				reraise: "AA-QQ",
-				call: "QQ-22 ATs+ KTs+ QTs+ JTs AKo"
+			"early": {
+				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AKo', 'AQo'],
+				reraise: ['AA', 'KK', 'QQ', 'AKs', 'AKo'],
+				call: ['JJ', 'TT', '99', 'AQs', 'AJs', 'ATs', 'KQs', 'KJs', 'QJs', 'JTs']
 			},
-			cutoff: {
-				raise: "22+ A9s+ KTs+ QTs+ JTs AKo+",
-				reraise: "JJ+ AKs",
-				call: "TT-22 AQs-A9s KJs-KTs QJs"
+			"cutoff": {
+				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', 'AKs', 'AQs', 'AJs', 'ATs', 'KQs', 'KJs', 'QJs', 'AKo', 'AQo', 'AJo'],
+				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', 'AKs', 'AQs', 'AKo', 'AQo'],
+				call: ['88', '77', '66', 'A9s', 'A8s', 'A7s', 'KQs', 'KJs', 'KTs', 'QJs', 'QTs', 'JTs']
 			},
-			button: {
-				raise: "22+ ATs+ KTs+ QTs+ JTs A9o+ KTo+ QJo",
-				reraise: "99+ AKs-ATs A5s-A2s KQs-KJs QJs JTs 97s 87s 54s AKo-AQo",
-				call: "88-22 A8s-A6s K9s-KTs Q9s-QTs J9s-JTs T9s 98s 87s 76s A8o-A6o K9o Q9o J9o T9o 98o"
+			"button": {
+				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', 'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'KQs', 'KJs', 'KTs', 'QJs', 'QTs', 'JTs', 'AKo', 'AQo', 'AJo', 'ATo'],
+				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AKo', 'AQo'],
+				call: ['77', '66', '55', 'A8s', 'A7s', 'A6s', 'KQs', 'KJs', 'KTs', 'K9s', 'QJs', 'QTs', 'Q9s', 'JTs', 'J9s']
 			},
-			blinds: {
-				reraise: "AA-QQ AKs",
-				call: "QQ-22 ATs+ KTs+ QTs+ JTs AKo"
+			"blinds": {
+				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', 'AKs', 'AQs', 'AKo', 'AQo'],
+				call: ['TT', '99', '88', '77', '66', '55', '44', '33', '22', 'AJs', 'ATs', 'A9s', 'A8s', 'KQs', 'KJs', 'KTs', 'QJs', 'QTs', 'JTs']
 			}
 		};
 		return handRanges;
 	}
-	function preFlopPlayerActionsBeforeMe(gameState, myPosition) {
-		let actionsBeforeMe = [];
-		for (let i = 0; i < myPosition; i++) {
-			const player = gameState.players[i];
-			const hand = player.hand;
-			const playerType = player.playerType;
-			const handRange = preFlopGetPlayerHandRange(playerType);
-			const action = preFlopDecideAction(hand, handRange);
+	function handToAnnotation(hand) {
+		const suits = { 'c': 'clubs', 'd': 'diamonds', 'h': 'hearts', 's': 'spades' };
+		const values = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, 'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
 
-			actionsBeforeMe.push({
-				playerId: i,
-				playerType: playerType,
-				action: action,
-				hand: hand
-			});
+		const card1 = { value: hand[0][0], suit: hand[0][1] };
+		const card2 = { value: hand[1][0], suit: hand[1][1] };
+
+		// Sort the cards in descending order by value
+		const sortedCards = [card1, card2].sort((a, b) => values[b.value] - values[a.value]);
+
+		// Determine the hand type
+		const handType = (sortedCards[0].suit === sortedCards[1].suit) ? 's' : 'o';
+
+		// If the cards have the same value, it's a pocket pair
+		if (sortedCards[0].value === sortedCards[1].value) {
+			return `${sortedCards[0].value}${sortedCards[1].value}`;
+		} else {
+			return `${sortedCards[0].value}${sortedCards[1].value}${handType}`;
 		}
-		return actionsBeforeMe;
 	}
-	function preFlopPotOdds(gameState, myPosition) {
-		let potSize = gameState.potSize;
-		let amountToCall = gameState.players[myPosition].amountToCall;
-
-		if (amountToCall === 0) {
-			return "No action required";
+	function preFlopPlayerActionsBeforeMe() {
+		// Get an array of players who act before me.
+		const playersActingBeforeMe = preFlopArrayPlayersActingBeforeMe();
+		if (debug) { console.log("Players Acting Before Me: ", playersActingBeforeMe); }
+		// Store actions taken by players acting before me.
+		const actionsAudit = [];
+		// Loop through and determine the actions of the players acting before me.
+		for (let i = 0; i < playersActingBeforeMe.length; i++) {
+			const playerId = playersActingBeforeMe[i].id;
+			const action = preFlopDecision(playerId);
+			// Save to the actionsAudit array.
+			actionsAudit.push({
+				playerId: playerId,
+				action: action
+			});
+			// Add to the gameState object.
+			gameState.players[playerId].action = action;
 		}
-
-		let potOdds = amountToCall / (potSize + amountToCall);
-		return potOdds;
+		if (debug) { console.log("Preflop Actions Audit: ", actionsAudit); }
+	}
+	function preFlopStats() {
+		// Effective stack size
+		document.querySelector('.stat-ess').textContent = analysisEffectiveStackSize();
 	}
 	// -------------------------------------------------------------
 	// PRIVATE SETUP FUNCTIONS
@@ -225,8 +309,8 @@ window.PB.Core = function () {
 		return deck;
 	}
 	function setupCreatePlayers(numPlayers) {
-		// Validate that we have 2-10 players
-		if (numPlayers < 2 || numPlayers > 10) {
+		// Validate that we have 5-10 players
+		if (numPlayers < 5 || numPlayers > 10) {
 			alert('Invalid number of players');
 			return false;
 		}
@@ -288,15 +372,21 @@ window.PB.Core = function () {
 		// Otherwise, increment the button position
 		return gameState.buttonPosition = (gameState.buttonPosition + 1) % gameState.players.length;
 	}
-	function setupGetMyPositionType(position, totalPlayers) {
-		if (position <= totalPlayers * 0.4) {
-			return 'early';
-		} else if (position <= totalPlayers * 0.7) {
-			return 'cutoff';
-		} else if (position <= totalPlayers * 0.9) {
+	function setupGetPosition() {
+		return (gameState.players.length + 1) % gameState.players.length;
+	}
+	function setupGetPositionZone(playerIndex, buttonIndex, totalPlayers) {
+		const positionAwayFromButton = (playerIndex - buttonIndex + totalPlayers) % totalPlayers;
+		const cutoff = Math.floor(totalPlayers * 0.9);
+
+		if (positionAwayFromButton === 0) {
 			return 'button';
-		} else {
+		} else if (positionAwayFromButton === cutoff) {
+			return 'cutoff';
+		} else if (positionAwayFromButton === 1 || positionAwayFromButton === 2) {
 			return 'blinds';
+		} else {
+			return 'early';
 		}
 	}
 	function setupGetPlayerType() {
@@ -305,7 +395,7 @@ window.PB.Core = function () {
 	}
 	function setupInit() {
 		// Generate players
-		gameState.players = setupCreatePlayers(prompt("Enter the number of players (2-10): "));
+		gameState.players = setupCreatePlayers(prompt("Enter the number of players (5-10): "));
 		if (debug) { console.log("Players Created: ", gameState.players); }
 		// If player count is off, don't continue
 		if (!gameState.players) {
@@ -323,8 +413,12 @@ window.PB.Core = function () {
 		// Get starting button position
 		gameState.buttonPosition = setupGetButtonPosition();
 		if (debug) { console.log("Button Position: ", gameState.buttonPosition); }
-		// Add button to the right player
+		// Add the button
 		document.querySelector('.player-' + gameState.buttonPosition).classList.add('button');
+		// Determine which players act before me and simulate their actions
+		preFlopPlayerActionsBeforeMe();
+		// Show preflop stats
+		preFlopStats();
 		// Events
 		setupRegisterEvents();
 	}
@@ -337,21 +431,29 @@ window.PB.Core = function () {
 				cutoff: 0,
 				button: 0,
 				blinds: 0
-			}
+			},
+			totalHands: 0
 		};
 	}
 	function setupRegisterEvents() {
 		// Call button
 		document.getElementById('call').addEventListener('click', function () {
-			// Call action
+			// Bump total hands
+			gameState.totalHands += 1;
+			// Bump position count for this zone
+			gameState.positionCounts[setupGetPositionZone(0, gameState.buttonPosition, gameState.players.length)] += 1;
 		}, { once: true });
 		// Fold button
 		document.getElementById('fold').addEventListener('click', function () {
-			// Fold action
+			// Bump total hands
+			gameState.totalHands += 1;
 		}, { once: true });
 		// Raise button
 		document.getElementById('raise').addEventListener('click', function () {
-			// Raise action
+			// Bump total hands
+			gameState.totalHands += 1;
+			// Bump position count for this zone
+			gameState.positionCounts[setupGetPositionZone(0, gameState.buttonPosition, gameState.players.length)] += 1;
 		}, { once: true });
 		// Reset button
 		document.getElementById('reset').addEventListener('click', function () {
@@ -359,7 +461,16 @@ window.PB.Core = function () {
 		}, { once: true });
 		// Show hands button
 		document.getElementById('show').addEventListener('click', function () {
-			// Show hands
+			for (let i = 0; i < gameState.players.length; i++) {
+				if (i === 0) {
+					continue;
+				}
+				// Show first card
+				document.querySelector('.player-' + i + ' .card1').src = 'img/' + gameState.players[i].hand[0] + '.png';
+				// Show second card
+				document.querySelector('.player-' + i + ' .card2').src = 'img/' + gameState.players[i].hand[1] + '.png';
+				//output += `Player ${i + 1} (${gameState.players[i].type}): ${gameState.players[i].hand[0].name}${gameState.players[i].hand[0].suit} ${gameState.players[i].hand[1].name}${gameState.players[i].hand[1].suit}\n`;
+			}
 		}, { once: true });
 	}
 	function setupResetGame() {
@@ -380,43 +491,6 @@ window.PB.Core = function () {
 			const j = Math.floor(Math.random() * (i + 1));
 			[gameState.deck[i], gameState.deck[j]] = [gameState.deck[j], gameState.deck[i]];
 		}
-	}
-	// -------------------------------------------------------------
-	// REPORTING AND VISUALIZATION FUNCTIONS
-	// -------------------------------------------------------------
-	function reportShowAllHands(gameState) {
-		let output = 'Hands of all players:\n';
-		for (let i = 0; i < gameState.players.length; i++) {
-			output += `Player ${i + 1} (${gameState.players[i].type}): ${gameState.players[i].hand[0].name}${gameState.players[i].hand[0].suit} ${gameState.players[i].hand[1].name}${gameState.players[i].hand[1].suit}\n`;
-		}
-		return output;
-	}
-	function reportShowPlayerTypes(gameState) {
-		let output = 'Player types:\n';
-		for (let i = 0; i < gameState.players.length; i++) {
-			output += `Player ${i + 1}: ${gameState.players[i].type}\n`;
-		}
-		return output;
-	}
-	function reportShowPotOdds(gameState, myPosition) {
-		let potOdds = preFlopPotOdds(gameState, myPosition);
-		let output = `Pot Odds: ${potOdds.toFixed(2)} (${(potOdds * 100).toFixed(2)}%)\n`;
-		return output;
-	}
-	function reportShowExpectedValue(gameState, myPosition) {
-		let ev = preFlopExpectedValue(gameState, myPosition);
-		let output = `Expected Value: $${ev.toFixed(2)}\n`;
-		return output;
-	}
-	function reportShowPositionStats(gameState) {
-		let output = 'Position stats:\n';
-		for (const position in gameState.positionCounts) {
-			let totalHands = gameState.totalHands;
-			let positionCount = gameState.positionCounts[position];
-			let percentage = positionCount / totalHands * 100;
-			output += `${position}: ${positionCount} hands (${percentage.toFixed(2)}%)\n`;
-		}
-		return output;
 	}
 	// -------------------------------------------------------------
 	// PRIVATE UTILITY FUNCTIONS
