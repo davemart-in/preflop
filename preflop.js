@@ -73,40 +73,68 @@ window.PB.Core = function () {
 	function analysisGetHandStrengthCardSuit(card) {
 		return card.slice(-1);
 	}
-	function analysisUpdatePositionStats() {
+	function analysisUpdatePositionStats(correctlyPlayed) {
+		let totalHandsPlayed = 0;
 		for (const position in gameState.zoneTotals) {
 			let zoneTotals = gameState.zoneTotals[position];
 			let zonePlayed = gameState.zonePlayed[position];
 			let percentage = (isNaN(zonePlayed / zoneTotals * 100)) ? 0 : zonePlayed / zoneTotals * 100;
 			document.querySelector('.stat-' + position).textContent = percentage.toFixed(0) + '%';
 			document.querySelector('.stat-totals-' + position).textContent = zoneTotals;
+			totalHandsPlayed += zoneTotals;
 		}
+		document.querySelector('.stat-total-hands-played').textContent = totalHandsPlayed;
+		// Update correctlyPlayedHands
+		if (correctlyPlayed) {
+			gameState.correctlyPlayedHands++;
+		}
+		let correctPercentage = (isNaN(gameState.correctlyPlayedHands / totalHandsPlayed * 100)) ? 0 : gameState.correctlyPlayedHands / totalHandsPlayed * 100;
+		document.querySelector('.stat-correctly-played-hands').textContent = correctPercentage.toFixed(0);
 	}
 	// -------------------------------------------------------------
 	// PRIVATE PRE-FLOP DECISION MAKING FUNCTIONS
 	// -------------------------------------------------------------
 	function preFlopAction(action) {
+		if (debug) { console.log("My Action: ", action); }
 		const zone = setupGetPositionZone(0, gameState.buttonPosition, gameState.players.length);
 		const hand = preFlophandToAnnotation(gameState.players[0].hand);
 		const optimalCall = preFlopGetOptimalHandRanges()[zone]['call'].includes(hand);
+		if (debug) { console.log("Is Optimal Call: ", optimalCall); }
 		const optimalRaise = preFlopGetOptimalHandRanges()[zone]['raise'].includes(hand);
+		if (debug) { console.log("Is Optimal Raise: ", optimalRaise); }
 		// Bump total hands
 		gameState.zoneTotals[zone] += 1;
 		// Bump position played count for this zone if call or raise
 		if (action === 'call' || action === 'raise') {
 			gameState.zonePlayed[zone] += 1;
 		}
-		// Update stats
-		analysisUpdatePositionStats();
+		let correctlyPlayed = false;
 		// Check if action matches optimal play
-		if (action === 'fold' && !optimalCall && !optimalRaise || optimalCall || optimalRaise) {
-			alert('Correct play');
-		} else {
-			alert('Incorrect play');
+		const feedbackSpan = document.querySelector('.feedback');
+		if (action === 'fold' && !optimalCall && !optimalRaise) {
+			feedbackSpan.textContent = 'Correct move!';
+			correctlyPlayed = true;
+		} else if ((action === 'call' && optimalCall) || (action === 'raise' && optimalRaise)) {
+			feedbackSpan.textContent = 'Correct move!';
+			correctlyPlayed = true;
+		} else if (action === 'fold' && optimalCall) {
+			feedbackSpan.textContent = 'Incorrect - Folded when you should have called';
+		} else if (action === 'fold' && optimalRaise) {
+			feedbackSpan.textContent = 'Incorrect - Folded when you should have raised';
+		} else if (action === 'call' && !optimalCall) {
+			feedbackSpan.textContent = 'Incorrect - Called when you should have folded';
+		} else if (action === 'call' && optimalRaise) {
+			feedbackSpan.textContent = 'Incorrect - Called when you should have raised';
+		} else if (action === 'raise' && !optimalRaise) {
+			feedbackSpan.textContent = 'Incorrect - Raised when you should have folded';
+		} else if (action === 'raise' && optimalCall) {
+			feedbackSpan.textContent = 'Incorrect - Raised when you should have called';
 		}
-		// Start new hand
-		const askForPlayers = false;
-		setupResetGame(askForPlayers);
+		// Update stats
+		analysisUpdatePositionStats(correctlyPlayed);
+		// Enable #show-flop and #next-hand buttons
+		document.querySelector('#show-flop').disabled = false;
+		document.querySelector('#next-hand').disabled = false;
 	}
 	function preFlopAllHandRanges() {
 		return [
@@ -447,7 +475,9 @@ window.PB.Core = function () {
 	function setupInitializeGameState() {
 		return {
 			deck: [],
+			flop: [],
 			players: [],
+			correctlyPlayedHands: 0,
 			zonePlayed: {
 				early: 0,
 				cutoff: 0,
@@ -471,6 +501,11 @@ window.PB.Core = function () {
 		document.getElementById('fold').addEventListener('click', function () {
 			preFlopAction('fold');
 		}, { once: true });
+		// Next hand button
+		document.getElementById('next-hand').addEventListener('click', function () {
+			const askForPlayers = false;
+			return setupResetGame(askForPlayers);
+		});
 		// Raise button
 		document.getElementById('raise').addEventListener('click', function () {
 			preFlopAction('raise');
@@ -480,6 +515,19 @@ window.PB.Core = function () {
 			const askForPlayers = true;
 			setupResetGame(askForPlayers);
 		}, { once: true });
+		// Show flop button
+		document.getElementById('show-flop').addEventListener('click', function () {
+			// Burn the next card
+			gameState.deck.shift();
+			// Deal the next 3 cards
+			for (let i = 0; i < 3; i++) {
+				gameState.flop.push(gameState.deck.shift());
+			}
+			// Update the flop cards
+			document.querySelector('.street-card-1').src = 'img/' + gameState.flop[0] + '.png';
+			document.querySelector('.street-card-2').src = 'img/' + gameState.flop[1] + '.png';
+			document.querySelector('.street-card-3').src = 'img/' + gameState.flop[2] + '.png';
+		});
 		// Show hands button
 		document.getElementById('show').addEventListener('click', function () {
 			for (let i = 0; i < gameState.players.length; i++) {
@@ -502,9 +550,19 @@ window.PB.Core = function () {
 		document.querySelectorAll('.player-other').forEach(function (player) {
 			player.remove();
 		});
+		// Clear feedback
+		document.querySelector('.feedback').innerHTML = '';
+		// Hide flop cards
+		document.querySelectorAll('.street-card').forEach(function (card) {
+			card.removeAttribute('src');
+		});
+		// Disable #show-flop and #next-hand buttons
+		document.querySelector('#show-flop').disabled = true;
+		document.querySelector('#next-hand').disabled = true;
 		// Reset players & deck
 		gameState.players = [];
 		gameState.deck = [];
+		gameState.flop = [];
 		setupInit();
 	}
 	function setupShuffleDeck() {

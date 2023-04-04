@@ -11,6 +11,16 @@
 		<!-- TABLE -->
 		<!-- ------------------------------------ -->
 		<div class="table-area">
+			<!-- FEEDBACK -->
+			<div class="feedback">&nbsp</div>
+			<!-- STREET -->
+			<div class="street">
+				<img class="street-card street-card-1">
+				<img class="street-card street-card-2">
+				<img class="street-card street-card-3">
+				<img class="street-card street-card-4">
+				<img class="street-card street-card-5">
+			</div>
 			<!-- PLAYERS -->
 			<div class="player player-primary player-0"></div>
 		</div>
@@ -55,6 +65,12 @@
 					</tr>
 				</table>
 			</div>
+			<div class="stat">
+				<strong>Total Hands Played:</strong> <span class="stat-total-hands-played"></span>
+			</div>
+			<div class="stat">
+				<strong>Correctly Played Percentage:</strong> <span class="stat-correctly-played-hands">0</span>%
+			</div>
 		</div>
 	</div>
 	<!-- ------------------------------------ -->
@@ -87,6 +103,8 @@
 			<button id="fold">Fold</button>
 			<button id="call">Call</button>
 			<button id="raise">Raise</button>
+			<button id="show-flop" disabled="disabled">Show Flop</button>
+			<button id="next-hand" disabled="disabled">Next Hand</button>
 		</div>
 	</script>
 </body>
