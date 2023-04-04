@@ -584,12 +584,14 @@ window.PB.Core = function () {
 			if (document.hidden) {
 				window.addEventListener('focus', function () {
 					return setupInit();
-				}, false);
+				}, { once: true });
 			} else {
-				if (document.readyState === 'complete') {
-					setupInit();
-				} else {
-					window.addEventListener('load', setupInit, false);
+				if (gameState.players.length === 0) {
+					if (document.readyState === 'complete') {
+						return setupInit();
+					} else {
+						return window.addEventListener('load', setupInit, false);
+					}
 				}
 			}
 		}
