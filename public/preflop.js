@@ -364,6 +364,7 @@ window.PB.Core = function () {
 			alert('Invalid number of players');
 			return false;
 		}
+		gameState.totalPlayers = numPlayers;
 		if (debug) { console.log("Number of Players: ", numPlayers); }
 		// Create an array of players
 		const primaryPlayer = document.querySelector('.player-primary');
@@ -445,7 +446,7 @@ window.PB.Core = function () {
 	}
 	function setupInit(askForPlayers) {
 		// Generate players
-		gameState.players = (askForPlayers) ? setupCreatePlayers(prompt('Enter the number of players (5-10):')) : setupCreatePlayers(10);
+		gameState.players = (askForPlayers) ? setupCreatePlayers(prompt('Enter the number of players (5-10):')) : setupCreatePlayers(gameState.totalPlayers);
 		if (debug) { console.log("Players Created: ", gameState.players); }
 		// If player count is off, don't continue
 		if (!gameState.players) {
@@ -477,6 +478,7 @@ window.PB.Core = function () {
 			deck: [],
 			flop: [],
 			players: [],
+			totalPlayers: 10,
 			correctlyPlayedHands: 0,
 			zonePlayed: {
 				early: 0,
