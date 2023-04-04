@@ -581,10 +581,16 @@ window.PB.Core = function () {
 	// -------------------------------------------------------------
 	return {
 		init: function () {
-			if (document.readyState === 'complete') {
-				setupInit();
+			if (document.hidden) {
+				window.addEventListener('focus', function () {
+					return setupInit();
+				}, false);
 			} else {
-				window.addEventListener('load', setupInit, false);
+				if (document.readyState === 'complete') {
+					setupInit();
+				} else {
+					window.addEventListener('load', setupInit, false);
+				}
 			}
 		}
 	};

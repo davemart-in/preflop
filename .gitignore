@@ -1,1 +1,4 @@
 source/
+.firebase/*
+.firebaserc
+firebase.json
