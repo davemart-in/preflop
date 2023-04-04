@@ -8,7 +8,7 @@ window.PB.Core = function () {
 	// -------------------------------------------------------------
 	// PRIVATE VARS
 	// -------------------------------------------------------------
-	const debug = true;
+	const debug = false;
 	let gameState = setupInitializeGameState();
 	// -------------------------------------------------------------
 	// PRIVATE ANALYSIS (CARD AND HAND) FUNCTIONS
@@ -73,19 +73,41 @@ window.PB.Core = function () {
 	function analysisGetHandStrengthCardSuit(card) {
 		return card.slice(-1);
 	}
-	function analysisShowPositionStats(gameState) {
-		let output = 'Position stats:\n';
-		for (const position in gameState.positionCounts) {
-			let totalHands = gameState.totalHands;
-			let positionCount = gameState.positionCounts[position];
-			let percentage = positionCount / totalHands * 100;
-			output += `${position}: ${positionCount} hands (${percentage.toFixed(2)}%)\n`;
+	function analysisUpdatePositionStats() {
+		for (const position in gameState.zoneTotals) {
+			let zoneTotals = gameState.zoneTotals[position];
+			let zonePlayed = gameState.zonePlayed[position];
+			let percentage = (isNaN(zonePlayed / zoneTotals * 100)) ? 0 : zonePlayed / zoneTotals * 100;
+			document.querySelector('.stat-' + position).textContent = percentage.toFixed(0) + '%';
+			document.querySelector('.stat-totals-' + position).textContent = zoneTotals;
 		}
-		return output;
 	}
 	// -------------------------------------------------------------
 	// PRIVATE PRE-FLOP DECISION MAKING FUNCTIONS
 	// -------------------------------------------------------------
+	function preFlopAction(action) {
+		const zone = setupGetPositionZone(0, gameState.buttonPosition, gameState.players.length);
+		const hand = preFlophandToAnnotation(gameState.players[0].hand);
+		const optimalCall = preFlopGetOptimalHandRanges()[zone]['call'].includes(hand);
+		const optimalRaise = preFlopGetOptimalHandRanges()[zone]['raise'].includes(hand);
+		// Bump total hands
+		gameState.zoneTotals[zone] += 1;
+		// Bump position played count for this zone if call or raise
+		if (action === 'call' || action === 'raise') {
+			gameState.zonePlayed[zone] += 1;
+		}
+		// Update stats
+		analysisUpdatePositionStats();
+		// Check if action matches optimal play
+		if (action === 'fold' && !optimalCall && !optimalRaise || optimalCall || optimalRaise) {
+			alert('Correct play');
+		} else {
+			alert('Incorrect play');
+		}
+		// Start new hand
+		const askForPlayers = false;
+		setupResetGame(askForPlayers);
+	}
 	function preFlopAllHandRanges() {
 		return [
 			'AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77', '66', '55', '44', '33', '22',
@@ -143,7 +165,7 @@ window.PB.Core = function () {
 		let handStrength = analysisGetHandStrength(gameState.players[playerId].hand);
 		if (debug) { console.log("Hand Strength: ", handStrength); }
 		// Convert hand to range format
-		const handRangeFormat = handToAnnotation(gameState.players[playerId].hand);
+		const handRangeFormat = preFlophandToAnnotation(gameState.players[playerId].hand);
 		if (debug) { console.log("Range Format: ", handRangeFormat); }
 		// If the expected value is positive and the player's hand is in the 'raise' or 'reraise' range...
 		if (playerHandRange['raise'] && playerHandRange['raise'].includes(handRangeFormat) || playerHandRange['reraise'] && playerHandRange['reraise'].includes(handRangeFormat)) {
@@ -199,7 +221,7 @@ window.PB.Core = function () {
 				call: ['66', '55', '44', '33', '22', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'K9s', 'K8s', 'K7s', 'Q9s', 'J9s', 'T8s', '97s', '86s', '75s', '64s', '53s', '43s']
 			},
 			"blinds": {
-				raise: [],
+				raise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AJs', 'ATs', 'KQs', 'AKo', 'AQo', 'AJo', 'ATo', 'KQo'],
 				reraise: ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AQs', 'AJs', 'ATs', 'KQs', 'AKo', 'AQo', 'AJo', 'ATo', 'KQo'],
 				call: ['88', '77', '66', '55', '44', '33', '22', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s', 'K9s', 'K8s', 'K7s', 'Q9s', 'J9s', 'T9s', '98s', '87s', '76s', '65s', '54s']
 			}
@@ -249,7 +271,7 @@ window.PB.Core = function () {
 		};
 		return handRanges;
 	}
-	function handToAnnotation(hand) {
+	function preFlophandToAnnotation(hand) {
 		const suits = { 'c': 'clubs', 'd': 'diamonds', 'h': 'hearts', 's': 'spades' };
 		const values = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, 'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
 
@@ -393,9 +415,9 @@ window.PB.Core = function () {
 		const playerTypes = ["loose", "tight", "optimal"];
 		return playerTypes[Math.floor(Math.random() * playerTypes.length)];
 	}
-	function setupInit() {
+	function setupInit(askForPlayers) {
 		// Generate players
-		gameState.players = setupCreatePlayers(prompt("Enter the number of players (5-10): "));
+		gameState.players = (askForPlayers) ? setupCreatePlayers(prompt('Enter the number of players (5-10):')) : setupCreatePlayers(10);
 		if (debug) { console.log("Players Created: ", gameState.players); }
 		// If player count is off, don't continue
 		if (!gameState.players) {
@@ -417,47 +439,46 @@ window.PB.Core = function () {
 		document.querySelector('.player-' + gameState.buttonPosition).classList.add('button');
 		// Determine which players act before me and simulate their actions
 		preFlopPlayerActionsBeforeMe();
-		// Show preflop stats
-		preFlopStats();
 		// Events
 		setupRegisterEvents();
+		// Show preflop stats
+		preFlopStats();
 	}
 	function setupInitializeGameState() {
 		return {
 			deck: [],
 			players: [],
-			positionCounts: {
+			zonePlayed: {
 				early: 0,
 				cutoff: 0,
 				button: 0,
 				blinds: 0
 			},
-			totalHands: 0
+			zoneTotals: {
+				early: 0,
+				cutoff: 0,
+				button: 0,
+				blinds: 0
+			}
 		};
 	}
 	function setupRegisterEvents() {
 		// Call button
 		document.getElementById('call').addEventListener('click', function () {
-			// Bump total hands
-			gameState.totalHands += 1;
-			// Bump position count for this zone
-			gameState.positionCounts[setupGetPositionZone(0, gameState.buttonPosition, gameState.players.length)] += 1;
+			preFlopAction('call');
 		}, { once: true });
 		// Fold button
 		document.getElementById('fold').addEventListener('click', function () {
-			// Bump total hands
-			gameState.totalHands += 1;
+			preFlopAction('fold');
 		}, { once: true });
 		// Raise button
 		document.getElementById('raise').addEventListener('click', function () {
-			// Bump total hands
-			gameState.totalHands += 1;
-			// Bump position count for this zone
-			gameState.positionCounts[setupGetPositionZone(0, gameState.buttonPosition, gameState.players.length)] += 1;
+			preFlopAction('raise');
 		}, { once: true });
 		// Reset button
 		document.getElementById('reset').addEventListener('click', function () {
-			setupResetGame();
+			const askForPlayers = true;
+			setupResetGame(askForPlayers);
 		}, { once: true });
 		// Show hands button
 		document.getElementById('show').addEventListener('click', function () {
@@ -469,11 +490,10 @@ window.PB.Core = function () {
 				document.querySelector('.player-' + i + ' .card1').src = 'img/' + gameState.players[i].hand[0] + '.png';
 				// Show second card
 				document.querySelector('.player-' + i + ' .card2').src = 'img/' + gameState.players[i].hand[1] + '.png';
-				//output += `Player ${i + 1} (${gameState.players[i].type}): ${gameState.players[i].hand[0].name}${gameState.players[i].hand[0].suit} ${gameState.players[i].hand[1].name}${gameState.players[i].hand[1].suit}\n`;
 			}
 		}, { once: true });
 	}
-	function setupResetGame() {
+	function setupResetGame(askForPlayers) {
 		if (debug) { console.log('-----'); console.log('RESET'); console.log('-----'); }
 		// Remove button position
 		gameState.buttonPosition = undefined;
@@ -482,8 +502,9 @@ window.PB.Core = function () {
 		document.querySelectorAll('.player-other').forEach(function (player) {
 			player.remove();
 		});
-		// Reset deck
-		gameState = setupInitializeGameState();
+		// Reset players & deck
+		gameState.players = [];
+		gameState.deck = [];
 		setupInit();
 	}
 	function setupShuffleDeck() {

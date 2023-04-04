@@ -18,6 +18,9 @@ button {
 	font-weight: 500;
 	padding: 5px 11px;
 }
+th {
+	text-align: left;
+}
 /* ---------------------------------------------------------- */
 /* PLAYER */
 /* ---------------------------------------------------------- */
@@ -208,9 +211,17 @@ button {
 .stats .stat {
 	color: #FFF;
 	margin-top: 16px;
+	opacity: 0.8;
 }
 .stats .stat strong {
 	font-weight: 500;
+}
+.stats table td {
+	color: #FFF;
+}
+.stats table th {
+	color: #FFF;
+	padding-right: 18px;
 }
 /* ---------------------------------------------------------- */
 /* POKER TABLE */
